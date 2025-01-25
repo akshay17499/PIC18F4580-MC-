@@ -1,0 +1,89 @@
+#include<xc.h>
+
+void init_config(void) {
+    TRISC = 0x0F;
+    TRISB = 0x00;
+    PORTB = 0x00;
+}
+int i=0;
+int flag2=0;
+void pattern1(void) {
+ 
+        if (i < 8&&flag2==0) {
+            PORTB = PORTB | 1 << i;
+            i++;
+        } else {
+            i--;
+            flag2=1;
+            PORTB = PORTB & ~(1 <<i);           
+        }
+}
+
+void pattern2(void) {
+    
+        if (i < 8&&flag2==0) {
+            PORTB = PORTB | 1 << i;
+            i++;
+        } else {
+            PORTB = PORTB & ~(1 <<8-i );
+            flag2=1;
+            i--;
+        }
+}
+
+void pattern3(void) {
+        PORTB = ~PORTB;
+}
+
+
+void main() {
+    int flag = 0;
+    init_config();
+    unsigned int delay =0;
+    while (1) {
+        if (RC0 == 0) {
+             i=0;
+            PORTB=0x00;
+            flag = 1;
+        }
+        if (RC1 == 0) {
+            i=0;
+            PORTB=0x00;
+            flag = 2;
+
+        }
+        if(RC2 == 0)
+        {
+            PORTB = 0xAA;
+            flag=3;
+        }
+        if(RC3 == 0)
+        {
+            PORTB = 0xF0;
+            flag=4;
+        }
+        if(delay++ == 50000)
+        {
+            delay=0;
+            if(flag==1)
+            {
+                pattern1();
+            }
+            if(flag==2)
+            {
+                pattern2();
+            }
+             if(flag==3)
+            {
+                pattern3();
+            }
+            if(flag==4)
+            {
+                pattern3();
+            }
+           
+        }        
+        if(i==0)
+            flag2=0;
+    }
+}
