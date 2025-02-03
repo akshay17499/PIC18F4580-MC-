@@ -1,0 +1,121 @@
+#include<xc.h>
+#define _XTAL_FREQ                  20000000
+void write_clcd(unsigned char byte, unsigned char control_bit)
+{
+    PORTCbits.RC1 = control_bit;
+     PORTD = byte;
+    
+   
+    PORTCbits.RC2 =1;
+    PORTCbits.RC2 =0;
+    
+      TRISD7 = 1;
+      PORTCbits.RC0 = 1;
+      PORTCbits.RC1 = 0;
+    do
+     {
+          PORTCbits.RC2 = 1;
+           PORTCbits.RC2 = 0;
+     }while(RD7);
+      PORTCbits.RC0 = 0;
+      TRISD7 = 0;
+
+}
+
+void init_config_clcd()
+{
+    TRISD = 0x00;
+    TRISC = TRISC&0xF8;
+    
+     PORTCbits.RC0 = 0;
+     
+     __delay_ms(30);
+     write_clcd(0x33,0);
+     __delay_us(4100);
+     write_clcd(0x33,0);
+     __delay_us(100);
+     write_clcd(0x33,0);
+     __delay_us(1);
+     
+      write_clcd(0x01,0); //clear display
+     __delay_us(500);
+     write_clcd(0x38,0);
+        __delay_us(100);
+     write_clcd(0x0C,0);
+     __delay_us(100);
+     write_clcd(0x02,0);
+      __delay_us(100);
+       
+    
+     
+}
+static void init_config(void)
+{
+    init_config_clcd();
+  
+}
+
+
+void clcd_print(unsigned char*arr,unsigned char addr)
+{
+    write_clcd(addr,0);
+   // TRISB =0x00;
+   // PORTB = 0xFF;
+    while(*arr!='\0')
+    {
+        write_clcd(*arr,1);
+        arr++;
+    }
+}
+
+void rotate_right(unsigned char*arr)
+{
+    char temp = arr[15];
+    for(int i=15;i>0;i--)
+    {
+        arr[i]=arr[i-1];
+    }
+    arr[0]=temp;
+}
+
+void rotate_left(unsigned char*arr)
+{
+    char temp = arr[0];
+    for(int i = 0;i<16;i++)
+    {
+        arr[i] = arr[i+1];
+    }
+    arr[15] = temp;
+}
+
+void main()
+{
+    unsigned long int wait;
+    //init_config();
+    init_config_clcd();
+    TRISC3=1;
+    unsigned char header[] = {"   rotate       "};
+    
+    int rotate =1,flag=1;
+    unsigned char arr[] = {"123456789       "};
+    
+    while(1)
+    {
+        if(wait++==20000){
+            wait=0;
+        clcd_print(arr,0xC0);
+        clcd_print(header,0x80);
+       
+        }
+         if(PORTCbits.RC3==0&&flag)
+        {
+            rotate = !rotate;
+            flag=0;
+        }
+        else if(PORTCbits.RC3==1)
+        {
+            flag = 1;
+        }
+        rotate?rotate_right(arr):rotate_left(arr);
+    }
+}
