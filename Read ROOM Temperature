@@ -1,0 +1,82 @@
+#include<xc.h>
+#define ZERO 0xE7
+#define ONE 0x21
+#define TWO 0xCB
+#define THREE 0x6B
+#define FOUR 0x2D
+#define FIVE  0x6E
+#define SIX 0xEE
+#define SEVEN 0x23
+#define EIGHT 0xEF
+#define NINE 0x6F
+void init_config_adc(void)
+{
+   CHS3 = 0;
+   CHS2 = 1;
+   CHS1 = 1;
+   CHS0 = 0;
+   ADON =1;
+   
+   PCFG3 = 0;
+   PCFG2 = 0;
+   PCFG1 = 1;
+   PCFG0 = 1;
+    
+   ADFM =1;
+   ACQT2 = 0;
+   ACQT1 = 0;
+   ACQT0 = 1;
+   ADCS2 = 0;
+   ADCS1 = 1;
+   ADCS0 =0;
+}
+
+unsigned int read_adc()
+{
+    unsigned int res;
+    GO=1;
+    while(GO);
+    res = ADRESH<<8 | ADRESL;
+    return res;
+}
+
+void init_config_ssd()
+{
+    TRISD = 0x00;
+    TRISA = TRISA&0xF0;
+}
+
+void print_ssd(unsigned char*digits)
+{
+    for(int i =0;i<4;i++)
+    {
+        PORTD = digits[i];
+        PORTA = (PORTA&0xF0) |1<<i;
+        for(int j=0;j<200;j++);
+    }
+}
+
+void main()
+{
+    init_config_ssd();
+    init_config_adc();
+    unsigned int wait=0;
+    unsigned int res;
+    unsigned char nums[] = {ZERO,ONE,TWO,THREE,FOUR,FIVE,SIX,SEVEN,EIGHT,NINE};
+    unsigned char digits[4];
+    while(1)
+    {
+        if(wait++==20)
+        {
+            wait=0;
+           res =read_adc();
+           res = res * 0.488;
+        }
+        
+        digits[0] = nums[(res/100)%10];
+        digits[1] = nums[(res/10)%10];
+        digits[2] = nums[res%10];
+        digits[3] = 0xC6;
+        print_ssd(digits);
+    }
+}
