@@ -1,0 +1,53 @@
+#include<xc.h>
+#define ONE 0x21
+#define TWO 0xCB
+#define THREE 0x6B
+#define FOUR 0x2D
+#define FIVE  0x6E
+#define SIX 0xEE
+#define SEVEN 0x23
+#define EIGHT 0xEF
+#define NINE 0x6F
+#define U 0x08
+
+void init_config(void)
+{
+    TRISD = 0x00;
+    TRISA &= 0xF0;
+    PORTD = 0x00;
+}
+void ssd_display(unsigned char *arr)
+{
+    for(int i=0;i<4;i++)
+    {
+        PORTD = arr[i];
+        PORTA = (PORTA&0xF0)|(1<<i);
+        for(unsigned int j=200;j;j--);
+    }
+}
+void main()
+{
+    unsigned char digits[]={ONE,TWO,THREE,FOUR,FIVE,SIX,SEVEN,EIGHT,NINE,U,U};
+    init_config();
+    unsigned char ssd_block[]={ONE,TWO,THREE,FOUR};
+    unsigned int delay=0;
+    int count =0;
+    while(1)
+    {
+        ssd_display(ssd_block);
+        if(delay++ == 500)
+        {
+            delay=0;
+            count++;
+            if(count==11)
+            count = 0;
+            
+        }
+        ssd_block[0] = digits[count];
+        ssd_block[1] = digits[(count+1)%11];
+        ssd_block[2] = digits[(count+2)%11];
+        ssd_block[3] = digits[(count+3)%11];
+        
+        
+    }
+}
