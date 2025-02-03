@@ -1,0 +1,67 @@
+#include<xc.h>
+
+void init_config(void)
+{
+    T08BIT = 1;
+    T0CS = 0;
+    PSA = 1;
+    //TMR0ON = 1;
+    
+    TMR0IE = 1;
+    TMR0IF = 0;
+    GIE = 1;
+    
+    TRISB =0x00;
+    TRISC0 = 1;
+}
+unsigned int count;
+unsigned int m_count;
+int dc;
+void __interrupt() isr(void)
+{
+    if(TMR0IF==1)
+    {
+        TMR0IF = 0;
+        count++;
+        if(count==20000)
+        {
+            count=0;
+           m_count++;
+            
+        }
+    }
+}
+
+void main()
+{
+    init_config();
+    int on=10;
+    unsigned int wait;
+    int total =100;
+    dc=10;
+    while(1)
+    {
+        if(RC0==0)
+        {
+            dc = 100;
+            TMR0ON = 1; 
+        }
+        if(on < dc)
+        {
+            PORTB = 0xFF;
+        }
+        else{
+            PORTB = 0x00;
+        }
+        if(on++==100)
+            on=0;
+        if(m_count==5)
+        {
+            dc=10;
+            on=0;
+          TMR0ON = 0; 
+          m_count=0;
+        }
+        
+    }
+}
