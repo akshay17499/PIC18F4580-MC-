@@ -1,0 +1,92 @@
+
+#include<xc.h>
+
+#define ZERO 0xE7
+#define ONE 0x21
+#define TWO 0xCB
+#define THREE 0x6B
+#define FOUR 0x2D
+#define FIVE  0x6E
+#define SIX 0xEE
+#define SEVEN 0x23
+#define EIGHT 0xEF
+#define NINE 0x6F
+
+void init_config(void) {
+    PORTD = 0x00;
+    TRISD = 0x00;
+    TRISA &= 0xF0;
+    TRISC |= 0x0F; //for switch
+}
+
+void write_eeprom(unsigned char addr, unsigned char data) {
+    EEADR = addr;
+    EEDATA = data;
+    EECON1bits.EEPGD = 0;
+    EECON1bits.CFGS = 0;
+    EECON1bits.WREN = 1;
+
+    INTCONbits.GIE = 0;
+    EECON2 = 0x55;
+    EECON2 = 0xAA;
+
+    EECON1bits.WR = 1;
+
+    while (EECON1bits.WR);
+
+    EECON1bits.WREN = 0;
+
+    INTCONbits.GIE = 1;
+}
+
+void ssd_display(unsigned char *digit) {
+        int k=0;
+    for(int i=0;i<4;i++)
+    {
+        PORTD = digit[i];
+        PORTA = (PORTA&0xF0)|(1<<i);
+        for(int j=300;j;j--);
+    }
+}
+
+unsigned char read_eeprom(unsigned char addr) {
+    EEADR = addr;
+    EECON1bits.EEPGD = 0;
+    EECON1bits.CFGS = 0;
+    EECON1bits.RD = 1;
+    return EEDATA;
+}
+
+int main() {
+    unsigned char digit[] = {ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE};
+    unsigned char ssd_block[] = {ZERO, ZERO, ZERO, ZERO};
+    unsigned int count = 0;
+    int wait = 0;
+    init_config();
+    unsigned char b1 = read_eeprom(0x00);
+   unsigned char b2 = read_eeprom(0x01);
+    count = (b2 << 8) | b1;
+    while (1) {
+
+        if (wait++ == 50) {
+            wait = 0;
+            count++;
+            if (count == 10000)
+                count = 0;
+          ssd_block[0] = digit[count / 1000];
+          ssd_block[1] = digit[(count / 100) % 10];
+          ssd_block[2] = digit[(count / 10) % 10];
+          ssd_block[3] = digit[count % 10];    
+        } 
+       
+        if (RC0 == 0) {
+            write_eeprom(0x00, count & 0xFF);
+            write_eeprom(0x01, (count >> 8)&0xFF);
+        } else if (RC1 == 0) {
+            write_eeprom(0x00 , 0x00);
+            write_eeprom(0x01, 0x00);
+        }
+
+       ssd_display(ssd_block);
+    }
+}
