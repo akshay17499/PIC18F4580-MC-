@@ -1,0 +1,213 @@
+#include<xc.h>
+#include<string.h>
+
+#define _XTAL_FREQ 20000000
+// clcd
+
+void write_clcd(unsigned char byte, unsigned char control_bit) {
+    RC1 = control_bit;
+    PORTD = byte;
+
+    RC2 = 1;
+    RC2 = 0;
+
+    RC0 = 1;
+    TRISD7 = 1;
+    RC1 = 0;
+    do {
+        RC2 = 1;
+        RC2 = 0;
+    } while (RD7);
+    TRISD7 = 0;
+    RC0 = 0;
+}
+
+void init_clcd() {
+    TRISD = 0x00;
+    TRISC = TRISC & 0xF8;
+
+    RC0 = 0;
+
+    __delay_ms(30);
+
+    write_clcd(0x33, 0);
+    __delay_us(4100);
+    write_clcd(0x33, 0);
+    __delay_us(100);
+    write_clcd(0x33, 0);
+    __delay_us(10);
+
+    write_clcd(0x01, 0);
+    __delay_us(500);
+    write_clcd(0x38, 0);
+    __delay_us(100);
+    write_clcd(0x0C, 0);
+    __delay_us(100);
+    write_clcd(0x02, 0);
+    __delay_us(100);
+}
+
+void putch(unsigned char data, unsigned char addr) {
+    write_clcd(addr, 0);
+    write_clcd(data, 1);
+}
+
+void print(unsigned char *data, unsigned char addr) {
+    write_clcd(addr, 0);
+    while (*data) {
+        write_clcd(*data++, 1);
+    }
+}
+
+void init_i2c()
+{
+    TRISC3 = 1;
+    TRISC4 = 1;
+    
+    SSPADD = 0x31;
+    SMP =1;
+    CKE = 0;
+    
+    SSPEN = 1;
+    SSPM3 = 1;
+    SSPM2 = 0;
+    SSPM1 = 0;
+    SSPM0 = 0;
+    
+    SSPIF =0 ;
+    BCLIF = 0;
+}
+
+void i2c_start()
+{
+    SEN = 1;
+    while(!SSPIF);
+    SSPIF=0;
+}
+
+void i2c_write(unsigned char data)
+{
+    SSPBUF = data;
+    while(!SSPIF);
+    SSPIF = 0;
+}
+
+void i2c_snt_ack()
+{
+    ACKDT = 1;
+    ACKEN = 1;
+}
+
+void i2c_re_start()
+{
+    RSEN = 1;
+    while(!SSPIF);
+    SSPIF=0;
+}
+
+void i2c_stop()
+{
+    PEN = 1;
+    while(!SSPIF);
+    SSPIF=0;
+}
+
+unsigned char i2c_read()
+{
+    RCEN = 1;
+    while(!SSPIF);
+    SSPIF = 0;
+    i2c_snt_ack();
+    return SSPBUF;
+}
+
+unsigned char read_data(unsigned char d_addr,unsigned char r_addr)
+{
+    i2c_start();
+    i2c_write(d_addr);
+    i2c_write(r_addr);
+    i2c_re_start();
+    i2c_write(d_addr+1);
+    unsigned char ch = i2c_read();
+    i2c_stop();
+    return ch;
+}
+
+void write_data(unsigned char d_addr,unsigned char r_addr,unsigned char data)
+{
+    i2c_start();
+    i2c_write(d_addr);
+    i2c_write(r_addr);
+    i2c_write(data);
+    i2c_stop();
+}
+
+void init_rtc()
+{
+    unsigned char dummy;
+    dummy = read_data(0xD0,0x00);
+	write_data(0xD0,0x00, dummy | 0x80);
+    //set clock 24 hr do it
+    dummy = read_data(0xD0,0x02);
+    write_data(0xD0,0x02,dummy& 0x00);
+    
+    
+    dummy = read_data(0xD0,0x00);
+    //putch(dummy,0x80);
+	write_data(0xD0,0x00, dummy & 0x7F);
+}
+
+void get_time_date(unsigned char*arr)
+{
+    unsigned char temp[5];
+    temp[0] = read_data(0xD0,0x02);//hr
+    temp[1] = read_data(0xD0,0x01);//min
+    temp[2] = read_data(0xD0,0x00);//sec
+    temp[3] = read_data(0xD0,0x04);//day
+    temp[4] = read_data(0xD0,0x05);//month
+    
+    arr[0] =48 +  ((temp[0]>>4) & 0x01);
+    arr[1] = 48 + (temp[0] & 0x0F);
+    arr[2] = ':';
+    arr[3] = 48 + ((temp[1]>>4) & 0x07);
+    arr[4] = 48 + (temp[1]&0x0F);
+    arr[5] = ':';
+    arr[6] = 48 + ((temp[2]>>4)& 0x07);
+    arr[7] = 48 + (temp[2]&0x0F);
+    arr[8] = ' ';
+    arr[9] = 48 + (temp[3]&0x30);
+    arr[10] = 48 + (temp[3]&0x0F);
+    arr[11] = '/';
+    arr[12] = 48 + (temp[4]&0x10);
+    arr[13] = 48 + (temp[4]&0x0F);
+    arr[14] = '\0';
+}
+
+void set_time(unsigned char*arr)
+{
+    unsigned char hr = (arr[0]-'0')<<4 | (arr[1]-'0');
+    unsigned char min = (arr[3] - '0')<<4 | (arr[4]-'0'); 
+    unsigned char sec = (arr[6] -'0')<<4 | (arr[7]-'0');
+    write_data(0xD0,0x00,sec);
+    write_data(0xD0,0x01,min);
+    write_data(0xD0,0x02,hr);
+    
+}
+
+
+void main()
+{
+    init_clcd();
+    print("akshay",0xC0);
+    init_i2c();
+    init_rtc();
+    unsigned char time[] = {"05:59:30 00/00"};
+    set_time(time);
+    while(1)
+    {
+        //print("akshay",0x80);
+        get_time_date(time);
+        print(time,0x80);
+        
+    }
+}
