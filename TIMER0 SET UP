@@ -1,0 +1,46 @@
+
+#include<xc.h>
+
+void init_config_TIMER0()
+{
+    T0CONbits.
+    T08BIT=1;
+    T0CS = 0;
+#if 1
+    PSA = 1; //pre scaler not assigned
+#else
+    PSA = 0;
+    T0PS2 = 0;
+    T0PS1 = 0;
+    T0PS0 = 0;
+#endif
+    TMR0IE = 1;
+    TMR0IF = 0;
+    TMR0ON = 1;
+}
+unsigned int count;
+void __interrupt() isr(void)
+{
+    if(TMR0IF==1)
+    {
+        TMR0IF = 0;
+        TMR0 = TMR0 + 8;
+           count++;
+        if(count==20000)
+        {
+            count = 0 ;
+            PORTBbits.RB0 = ~PORTBbits.RB0;
+        }
+    }
+}
+void main()
+{
+    init_config_TIMER0();
+    GIE=1;
+    TRISB=0x00;
+    PORTB=0x00;
+    while(1)
+    {
+        ;
+    }
+}
